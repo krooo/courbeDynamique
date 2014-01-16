@@ -87,7 +87,7 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 		axis.setAutoRange(true);
 		axis.setFixedAutoRange(60000.0); // 60 seconds
 		axis = plot.getRangeAxis();
-		axis.setRange(0.0, 50.0);// 50°C
+		axis.setRange(10.0, 50.0);// 50°C
 		return result;
 	}
 

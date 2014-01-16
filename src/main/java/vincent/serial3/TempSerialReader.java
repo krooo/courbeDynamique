@@ -3,11 +3,12 @@ package vincent.serial3;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.TooManyListenersException;
+
+import org.apache.log4j.Logger;
 
 import purejavacomm.CommPortIdentifier;
 import purejavacomm.NoSuchPortException;
@@ -23,6 +24,14 @@ public class TempSerialReader implements SerialPortEventListener {
 	private SerialPort port;
 	private FloatPrinter floatPrinter;
 
+	private long timeStarted = System.currentTimeMillis();
+
+	private float derniereTemperature;
+	private int timeUp;
+
+	private static Logger LOG = Logger.getLogger(TempSerialReader.class);
+	private static Logger LOG_TEMP = Logger.getLogger("temperature");
+
 	public TempSerialReader(FloatPrinter floatPrinter) {
 		this.floatPrinter = floatPrinter;
 		init();
@@ -33,9 +42,9 @@ public class TempSerialReader implements SerialPortEventListener {
 	}
 
 	private void init() {
+
 		@SuppressWarnings("unchecked")
-		Enumeration<CommPortIdentifier> portIdentifiers = CommPortIdentifier
-				.getPortIdentifiers();
+		Enumeration<CommPortIdentifier> portIdentifiers = CommPortIdentifier.getPortIdentifiers();
 		while (portIdentifiers.hasMoreElements()) {
 			CommPortIdentifier el = portIdentifiers.nextElement();
 			System.out.println(el.getName());
@@ -43,33 +52,26 @@ public class TempSerialReader implements SerialPortEventListener {
 		}
 
 		try {
-			CommPortIdentifier portId = CommPortIdentifier
-					.getPortIdentifier("/dev/ttyUSB0");
+			CommPortIdentifier portId = CommPortIdentifier.getPortIdentifier("/dev/ttyUSB0");
 			port = (SerialPort) portId.open("LectureTemp", 10000);
 
 			port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
-			port.setSerialPortParams(9600, SerialPort.DATABITS_8,
-					SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+			port.setSerialPortParams(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 			port.addEventListener(this);
 			port.notifyOnDataAvailable(true);// pour que serialEvent soit appelé
-			fluxLecture = new BufferedReader(new InputStreamReader(
-					port.getInputStream(), "US-ASCII"));
+			fluxLecture = new BufferedReader(new InputStreamReader(port.getInputStream(), "US-ASCII"));
+			LOG_TEMP.info("temps depuis debut du lancement,temps d'allumage (ms),temperature");
 
 		} catch (PortInUseException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("Port utilisé !", l_ex);
 		} catch (UnsupportedCommOperationException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("opération non supportée !", l_ex);
 		} catch (TooManyListenersException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("un seul listener par port !", l_ex);
 		} catch (NoSuchPortException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("Port non trouvé !", l_ex);
 		} catch (IOException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("Exception : ", l_ex);
 		}
 	}
 
@@ -77,10 +79,22 @@ public class TempSerialReader implements SerialPortEventListener {
 		try {
 			fluxLecture.close();
 		} catch (IOException l_ex) {
-			// TODO Auto-generated catch block
-			l_ex.printStackTrace();
+			LOG.error("Erreur à la fermeture : ", l_ex);
 		}
 		port.close();
+	}
+
+	private float getFloat(String ligne) {
+		Scanner scanner = new Scanner(ligne);
+		scanner.useLocale(Locale.US);
+		if (scanner.hasNext()) {
+			scanner.next();
+			// if the next is a float, print found and the float
+			if (scanner.hasNextFloat()) {
+				return scanner.nextFloat();
+			}
+		}
+		throw new IllegalArgumentException("float was not extracted from : " + ligne);
 	}
 
 	public void serialEvent(SerialPortEvent event) {
@@ -89,24 +103,37 @@ public class TempSerialReader implements SerialPortEventListener {
 			String readed;
 			try {
 				readed = fluxLecture.readLine();
-				System.out.println(readed);
+				LOG.debug("message recu :" + readed);
+
+				Scanner scanner = new Scanner(readed);
+				scanner.useLocale(Locale.US);
+
 				if (readed.startsWith("temp: ")) {
-					Scanner scanner = new Scanner(readed);
-					scanner.useLocale(Locale.US);
 					if (scanner.hasNext()) {
 						scanner.next();
 						// if the next is a float, print found and the float
 						if (scanner.hasNextFloat()) {
-							float temp = scanner.nextFloat();
-							System.out.println("Found :" + temp);
-							floatPrinter.printFloat(temp);
+							derniereTemperature = scanner.nextFloat();
+							LOG.debug("derniereTemperature :" + derniereTemperature);
+							floatPrinter.printFloat(derniereTemperature);
+						}
+					}
+				}
+				if (readed.startsWith("timeUp: ")) {
+					if (scanner.hasNext()) {
+						scanner.next();
+						// if the next is a float, print found and the float
+						if (scanner.hasNextInt()) {
+							timeUp = scanner.nextInt();
+							LOG.debug("timeUp :" + timeUp);
+							LOG_TEMP.info((System.currentTimeMillis() - timeStarted) / 1000 + "," + timeUp + ","
+									+ this.derniereTemperature);
 						}
 					}
 
 				}
 			} catch (IOException l_ex) {
-				// TODO Auto-generated catch block
-				l_ex.printStackTrace();
+				LOG.error("Erreur de lecture : ", l_ex);
 			}
 		}
 

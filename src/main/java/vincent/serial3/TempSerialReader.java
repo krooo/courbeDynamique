@@ -8,7 +8,8 @@ import java.util.Locale;
 import java.util.Scanner;
 import java.util.TooManyListenersException;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import purejavacomm.CommPortIdentifier;
 import purejavacomm.NoSuchPortException;
@@ -29,8 +30,8 @@ public class TempSerialReader implements SerialPortEventListener {
 	private float derniereTemperature;
 	private int timeUp;
 
-	private static Logger LOG = Logger.getLogger(TempSerialReader.class);
-	private static Logger LOG_TEMP = Logger.getLogger("temperature");
+    private static Logger LOG = LoggerFactory.getLogger(TempSerialReader.class);
+    private static Logger LOG_TEMP = LoggerFactory.getLogger("temperature");
 
 	public TempSerialReader(FloatPrinter floatPrinter) {
 		this.floatPrinter = floatPrinter;
@@ -58,18 +59,18 @@ public class TempSerialReader implements SerialPortEventListener {
 			port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			port.setSerialPortParams(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 			port.addEventListener(this);
-			port.notifyOnDataAvailable(true);// pour que serialEvent soit appelé
+            port.notifyOnDataAvailable(true);// pour que serialEvent soit appelé
 			fluxLecture = new BufferedReader(new InputStreamReader(port.getInputStream(), "US-ASCII"));
 			LOG_TEMP.info("temps depuis debut du lancement,temps d'allumage (ms),temperature");
 
 		} catch (PortInUseException l_ex) {
-			LOG.error("Port utilisé !", l_ex);
+            LOG.error("Port utilisé !", l_ex);
 		} catch (UnsupportedCommOperationException l_ex) {
-			LOG.error("opération non supportée !", l_ex);
+            LOG.error("opération non supportée !", l_ex);
 		} catch (TooManyListenersException l_ex) {
 			LOG.error("un seul listener par port !", l_ex);
 		} catch (NoSuchPortException l_ex) {
-			LOG.error("Port non trouvé !", l_ex);
+            LOG.error("Port non trouvé !", l_ex);
 		} catch (IOException l_ex) {
 			LOG.error("Exception : ", l_ex);
 		}
@@ -79,7 +80,7 @@ public class TempSerialReader implements SerialPortEventListener {
 		try {
 			fluxLecture.close();
 		} catch (IOException l_ex) {
-			LOG.error("Erreur à la fermeture : ", l_ex);
+            LOG.error("Erreur à la fermeture : ", l_ex);
 		}
 		port.close();
 	}

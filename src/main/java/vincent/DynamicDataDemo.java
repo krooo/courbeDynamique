@@ -20,7 +20,13 @@
 package vincent;
 
 import java.awt.BorderLayout;
+import java.awt.Label;
+import java.awt.TextField;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
+import java.io.BufferedWriter;
+import java.io.IOException;
 
 import javax.swing.JPanel;
 
@@ -35,6 +41,8 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import vincent.serial3.TempSerialReader;
 
@@ -50,6 +58,9 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 	private TimeSeries series;
 
 	private TempSerialReader tempSerialReader;
+    private static Logger LOG = LoggerFactory.getLogger(DynamicDataDemo.class);
+
+    private Label temperatureCouranteLabel;
 
 	/**
 	 * Constructs a new demonstration application.
@@ -67,8 +78,34 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 
 		final JPanel content = new JPanel(new BorderLayout());
 		content.add(chartPanel);
-		chartPanel.setPreferredSize(new java.awt.Dimension(500, 270));
+        chartPanel.setPreferredSize(new java.awt.Dimension(500, 300));
 		setContentPane(content);
+
+        // Zone de saisie de commande vers le port série :
+        TextField zoneSaisie = new TextField(10);
+        chartPanel.add(zoneSaisie);
+        zoneSaisie.setLocation(100, 300);
+        zoneSaisie.validate();
+        zoneSaisie.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+                int key = e.getKeyCode();
+                if (key == KeyEvent.VK_ENTER) {
+                    TextField textField = (TextField) e.getComponent();
+
+                    try {
+                        BufferedWriter writer = tempSerialReader.getEcrivainPortSerie();
+                        writer.write(textField.getText());
+                        writer.newLine();
+                        writer.flush();
+                    } catch (IOException l_ex) {
+                        LOG.error("erreur d'écriture sur le port série: ", l_ex);
+                    }
+                }
+            }
+        });
+
+        temperatureCouranteLabel = new Label("XX.X°C");
+        chartPanel.add(temperatureCouranteLabel);
 
 		tempSerialReader = new TempSerialReader(this);
 	}
@@ -80,14 +117,14 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 	 * @return A sample chart.
 	 */
 	private JFreeChart createChart(final XYDataset dataset) {
-		final JFreeChart result = ChartFactory.createTimeSeriesChart("", "Temps", "Température", dataset, true, true,
+        final JFreeChart result = ChartFactory.createTimeSeriesChart("", "Temps", "Température", dataset, true, true,
 				false);
 		final XYPlot plot = result.getXYPlot();
 		ValueAxis axis = plot.getDomainAxis();
 		axis.setAutoRange(true);
 		axis.setFixedAutoRange(60000.0); // 60 seconds
 		axis = plot.getRangeAxis();
-		axis.setRange(10.0, 50.0);// 50°C
+        axis.setRange(10.0, 50.0);// 50°C
 		return result;
 	}
 
@@ -104,12 +141,15 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 
 	}
 
-	public void windowClosed(WindowEvent event) {
+
+
+    public void windowClosed(WindowEvent event) {
 		tempSerialReader.close();
 	}
 
-	public void printFloat(float floatToPrint) {
+	public void afficherDerniereTemperature(float floatToPrint) {
 		this.series.add(new Millisecond(), floatToPrint);
+        temperatureCouranteLabel.setText(floatToPrint + "°C");
 	}
 
 }

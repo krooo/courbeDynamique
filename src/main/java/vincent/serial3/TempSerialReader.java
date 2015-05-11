@@ -1,8 +1,10 @@
 package vincent.serial3;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Scanner;
@@ -22,6 +24,7 @@ import vincent.FloatPrinter;
 
 public class TempSerialReader implements SerialPortEventListener {
 	private BufferedReader fluxLecture;
+    private BufferedWriter ecrivainPortSerie;
 	private SerialPort port;
 	private FloatPrinter floatPrinter;
 
@@ -53,7 +56,7 @@ public class TempSerialReader implements SerialPortEventListener {
 		}
 
 		try {
-			CommPortIdentifier portId = CommPortIdentifier.getPortIdentifier("/dev/ttyUSB0");
+            CommPortIdentifier portId = CommPortIdentifier.getPortIdentifier("COM4"); // CommPortIdentifier.getPortIdentifier("/dev/ttyUSB0");
 			port = (SerialPort) portId.open("LectureTemp", 10000);
 
 			port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
@@ -61,6 +64,8 @@ public class TempSerialReader implements SerialPortEventListener {
 			port.addEventListener(this);
             port.notifyOnDataAvailable(true);// pour que serialEvent soit appelé
 			fluxLecture = new BufferedReader(new InputStreamReader(port.getInputStream(), "US-ASCII"));
+            ecrivainPortSerie = new BufferedWriter(new OutputStreamWriter(port.getOutputStream(), "US-ASCII"));
+
 			LOG_TEMP.info("temps depuis debut du lancement,temps d'allumage (ms),temperature");
 
 		} catch (PortInUseException l_ex) {
@@ -79,6 +84,7 @@ public class TempSerialReader implements SerialPortEventListener {
 	public void close() {
 		try {
 			fluxLecture.close();
+            ecrivainPortSerie.close();
 		} catch (IOException l_ex) {
             LOG.error("Erreur à la fermeture : ", l_ex);
 		}
@@ -116,7 +122,7 @@ public class TempSerialReader implements SerialPortEventListener {
 						if (scanner.hasNextFloat()) {
 							derniereTemperature = scanner.nextFloat();
 							LOG.debug("derniereTemperature :" + derniereTemperature);
-							floatPrinter.printFloat(derniereTemperature);
+							floatPrinter.afficherDerniereTemperature(derniereTemperature);
 						}
 					}
 				}
@@ -139,4 +145,8 @@ public class TempSerialReader implements SerialPortEventListener {
 		}
 
 	}
+
+    public BufferedWriter getEcrivainPortSerie() {
+        return ecrivainPortSerie;
+    }
 }

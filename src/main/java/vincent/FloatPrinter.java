@@ -1,5 +1,5 @@
 package vincent;
 
 public interface FloatPrinter {
-	void printFloat(float floatToPrint);
+	void afficherDerniereTemperature(float temperature);
 }

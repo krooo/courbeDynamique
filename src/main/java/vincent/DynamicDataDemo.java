@@ -61,6 +61,8 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
     private static Logger LOG = LoggerFactory.getLogger(DynamicDataDemo.class);
 
     private Label temperatureCouranteLabel;
+    private Label tempsDeChauffeEtRelicat = new Label("------------------------------------------------------------");
+    private Label paramsPid = new Label("-------------------------------------------------------------------------------------");
 
 	/**
 	 * Constructs a new demonstration application.
@@ -95,7 +97,7 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
                     try {
                         BufferedWriter writer = tempSerialReader.getEcrivainPortSerie();
                         writer.write(textField.getText());
-                        writer.newLine();
+                        writer.write('\r');
                         writer.flush();
                     } catch (IOException l_ex) {
                         LOG.error("erreur d'écriture sur le port série: ", l_ex);
@@ -106,6 +108,8 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 
         temperatureCouranteLabel = new Label("XX.X°C");
         chartPanel.add(temperatureCouranteLabel);
+        chartPanel.add(tempsDeChauffeEtRelicat);
+        chartPanel.add(paramsPid);
 
 		tempSerialReader = new TempSerialReader(this);
 	}
@@ -151,5 +155,16 @@ public class DynamicDataDemo extends ApplicationFrame implements FloatPrinter {
 		this.series.add(new Millisecond(), floatToPrint);
         temperatureCouranteLabel.setText(floatToPrint + "°C");
 	}
+
+    @Override
+    public void setParamsPid(String params) {
+        paramsPid.setText(params);
+    }
+
+    @Override
+    public void setDureeDeChauffeEtRelicat(String chauffeEtRelicat) {
+        tempsDeChauffeEtRelicat.setText(chauffeEtRelicat);
+
+    }
 
 }

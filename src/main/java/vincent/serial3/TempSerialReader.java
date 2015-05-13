@@ -31,7 +31,7 @@ public class TempSerialReader implements SerialPortEventListener {
 	private long timeStarted = System.currentTimeMillis();
 
 	private float derniereTemperature;
-	private int timeUp;
+
 
     private static Logger LOG = LoggerFactory.getLogger(TempSerialReader.class);
     private static Logger LOG_TEMP = LoggerFactory.getLogger("temperature");
@@ -63,8 +63,8 @@ public class TempSerialReader implements SerialPortEventListener {
 			port.setSerialPortParams(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 			port.addEventListener(this);
             port.notifyOnDataAvailable(true);// pour que serialEvent soit appelé
-			fluxLecture = new BufferedReader(new InputStreamReader(port.getInputStream(), "US-ASCII"));
-            ecrivainPortSerie = new BufferedWriter(new OutputStreamWriter(port.getOutputStream(), "US-ASCII"));
+            fluxLecture = new BufferedReader(new InputStreamReader(port.getInputStream(), "UTF-8"));
+            ecrivainPortSerie = new BufferedWriter(new OutputStreamWriter(port.getOutputStream(), "UTF-8"));
 
 			LOG_TEMP.info("temps depuis debut du lancement,temps d'allumage (ms),temperature");
 
@@ -91,25 +91,13 @@ public class TempSerialReader implements SerialPortEventListener {
 		port.close();
 	}
 
-	private float getFloat(String ligne) {
-		Scanner scanner = new Scanner(ligne);
-		scanner.useLocale(Locale.US);
-		if (scanner.hasNext()) {
-			scanner.next();
-			// if the next is a float, print found and the float
-			if (scanner.hasNextFloat()) {
-				return scanner.nextFloat();
-			}
-		}
-		throw new IllegalArgumentException("float was not extracted from : " + ligne);
-	}
+
 
 	public void serialEvent(SerialPortEvent event) {
 		if (event.getEventType() == SerialPortEvent.DATA_AVAILABLE) {
 
-			String readed;
 			try {
-				readed = fluxLecture.readLine();
+                String readed = fluxLecture.readLine();
 				LOG.debug("message recu :" + readed);
 
 				Scanner scanner = new Scanner(readed);
@@ -121,28 +109,30 @@ public class TempSerialReader implements SerialPortEventListener {
 						// if the next is a float, print found and the float
 						if (scanner.hasNextFloat()) {
 							derniereTemperature = scanner.nextFloat();
-							LOG.debug("derniereTemperature :" + derniereTemperature);
 							floatPrinter.afficherDerniereTemperature(derniereTemperature);
 						}
 					}
-				}
-				if (readed.startsWith("timeUp: ")) {
+                } else if (readed.startsWith("timeUp: ")) {
 					if (scanner.hasNext()) {
 						scanner.next();
 						// if the next is a float, print found and the float
 						if (scanner.hasNextInt()) {
-							timeUp = scanner.nextInt();
-							LOG.debug("timeUp :" + timeUp);
+                            int timeUp = scanner.nextInt();
 							LOG_TEMP.info((System.currentTimeMillis() - timeStarted) / 1000 + "," + timeUp + ","
 									+ this.derniereTemperature);
 						}
 					}
 
-				}
+                } else if (readed.startsWith("durée à chauffer: ")) {
+                    floatPrinter.setDureeDeChauffeEtRelicat(readed);
+                } else if (readed.startsWith("coefficients P=")) {
+                    floatPrinter.setParamsPid(readed);
+                }
+                scanner.close();
 			} catch (IOException l_ex) {
 				LOG.error("Erreur de lecture : ", l_ex);
 			}
-		}
+        }
 
 	}
 
